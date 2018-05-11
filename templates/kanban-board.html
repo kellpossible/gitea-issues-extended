@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<title>Kanban Board</title>
+  <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.css" type="text/css" media="screen" title="no title" charset="utf-8">
+  <link rel="stylesheet" href="/static/tether/css/tether.min.css" type="text/css" media="screen" title="no title" charset="utf-8">
+  <script src="/static/jquery/js/jquery-1.12.3.min.js" type="text/javascript" charset="utf-8"></script>
+  <script src="/static/tether/js/tether.min.js" type="text/javascript" charset="utf-8"></script>
+  <script src="/static/bootstrap/js/bootstrap.js" type="text/javascript" charset="utf-8"></script>
+  <style>
+.body-background {
+  background-color: #00AECC;
+}
+
+.card-body-background {
+  border-color: #00AECC;
+}
+
+.board-title {
+  color: white;
+  text-align: center;
+}
+
+html,body{
+  height: 100%
+}
+
+.fill-height {
+  min-height: 100%;
+  height:auto !important; /* cross-browser */
+  height: 100%; /* cross-browser */
+}
+
+.column-card {
+
+}
+
+.card-block {
+  padding: 0.75rem;
+}
+
+.issue-closed {
+  border-color: #ff6161;
+  border-width: medium;
+  border-style: solid;
+  border-radius: 0.25rem;
+}
+
+.avatar-image{
+  margin-right: .25em;
+  display: inline;
+  width: 2em;
+  height: 2em;
+  border-radius: 3px;
+}
+
+.item-title {
+  padding-right: 0.2em;
+}
+
+.issue-card {
+  background-color: white;
+}
+
+.issue-card:hover {
+  background-color: #edeff0;
+}
+
+a.issue-title-link {
+  color: black;
+  text-decoration: none;
+
+}
+
+a.issue-title-link:hover {
+  color: #2D2D2D;
+  text-decoration: none;
+}
+
+  </style>
+</head>
+<body>
+  <div class="body-background container-fluid fill-height">
+    <div class="row">
+      <div class="col-md-12">
+        <h2 class="board-title">SWE40001 Kanban Board</h2>
+      </div>
+    </div>
+    <div class="row">
+      {% for column in columns %}
+        <!-- {{ column.title }} issues -->
+        <div class="col-lg-3 col-md-4 col-sm-6 col-xs-12">
+          <div class="card card-body-background" style="background-color: {{column.color}}">
+            <div class="card-block column-card">
+              <h4 class="card-title">{{column.title}}</h4>
+              <p class="card-text">
+                <div class="container">
+                {% for issue in column["issues"]: %}
+                  <div class="row">
+                    <div class="card issue-card">
+                      <div class="card-block {% if issue.state == "closed" %}issue-closed{% endif %}">
+                        <a class="issue-title-link" href="{{issue.get_server_url()}}"><h5 class="card-title">#{{issue.number}} {{issue.title}}</h5></a>
+                        <div class="card-text">
+                          <div class="container">
+                            <div class="row">
+                              <table>
+                                <tr>
+                                  <td class="item-title">
+                                    Assignee:
+                                  </td>
+                                  <td>
+                                    {% if issue.assignee is not none %}
+                                      <a href="{{issue.assignee.get_url()}}"><img class="avatar-image" src="{{issue.assignee.get_avatar_url()}}">{{issue.assignee.username}}</a>
+                                    {% else %}
+                                      None
+                                    {% endif %}
+                                  </td>
+                                </tr>
+                              </table>
+                            </div>
+                            <div class="row">
+                            {% if issue.labels is not none %}
+                            {% for label in issue.labels %}
+                            {% if label not in sprint_labels  %}
+                              <a href="{{label.get_url()}}">
+                                <span class="label label-default" style="background-color: {{label.color}}; color: {{label.get_title_color()}}">{{label.name}}</span>
+                              </a>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+                </div>
+              </p>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

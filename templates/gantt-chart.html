@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<head>
+	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+	<title>Gantt Chart</title>
+	<style>
+		.drag_date {
+			color: #454545;
+			font-size: 13px;
+			text-align: center;
+			z-index: 1;
+		}
+
+		.drag_date.drag_move_start {
+			margin-left: -15px;
+		}
+
+		.drag_date.drag_move_end {
+			margin-left: 15px;
+		}
+
+		.drag_move_vertical, .drag_move_horizontal {
+			background-color: #9DE19E;
+			opacity: 0.7;
+			box-sizing: border-box;
+		}
+
+		.drag_move_vertical {
+			border-right: 1px #6AC666 solid;
+			border-left: 1px #6AC666 solid;
+		}
+
+		.drag_move_horizontal {
+			border-top: 1px #6AC666 solid;
+			border-bottom: 1px #6AC666 solid;
+		}
+
+		.dhx_calendar_cont input {
+			width: 96px;
+			padding: 0;
+			margin: 3px 10px 10px 10px;
+			font-size: 11px;
+			height: 17px;
+			text-align: center;
+			border: 1px solid #ccc;
+			color: #646464;
+		}
+
+		.dhtmlxcalendar_dhx_skyblue, .dhtmlxcalendar_dhx_web, .dhtmlxcalendar_dhx_terrace {
+			z-index: 999999 !important;
+		}
+
+		.gantt_slider {
+			width: 530px;
+			height: 20px;
+			margin-left: 10px;
+			display: inline-block;
+		}
+
+		.gantt_slider input{
+			width: 34px;
+			height: 18px;
+			border: none;
+
+		}
+		.gantt_slider div:first-child, .gantt_slider .gantt_slider_value{
+			display: inline-block;
+			vertical-align: middle;
+			line-height: 13px;
+		}
+		.gantt_slider .gantt_slider_value{
+			font-size: 15px;
+			color: black;
+			margin: 5px 10px;
+
+		}
+		.gantt_task_progress{
+			text-align:left;
+			padding-left:10px;
+		    box-sizing: border-box;
+			color:white;
+			font-weight: bold;
+		}
+
+		.child_preview{
+			box-sizing: border-box;
+			margin-top: 2px;
+			position: absolute;
+			z-index: 1;
+			color: white;
+			text-align: center;
+			font-size: 12px;
+		}
+
+		.gantt_task_line.task-collapsed{
+			height: 4px;
+			opacity: 0.25;
+		}
+
+		.gantt_task_line.gantt_project.task-collapsed .gantt_task_content{
+			display: none;
+		}
+
+		.gantt_row.task-parent{
+			font-weight: bold;
+		}
+
+		/* task styles */
+		.red .gantt_cell, .odd.red .gantt_cell,
+	    .red .gantt_task_cell, .odd.red .gantt_task_cell{
+	        background-color: #FDE0E0;
+	    }
+	    .green .gantt_cell, .odd.green .gantt_cell,
+	    .green .gantt_task_cell, .odd.green .gantt_task_cell {
+	        background-color: #BEE4BE;
+	    }
+
+
+	    .milestone{
+	        border:2px solid #34c461;
+	        color:#34c461;
+	        background-color: #34c461;
+	    }
+	    .milestone .gantt_task_progress{
+	        background-color: #23964d;
+	    }
+
+	    .issue{
+	        border:2px solid #6ba8e3;
+	        color:#6ba8e3;
+	        background-color: #6ba8e3;
+	    }
+	    .issue .gantt_task_progress{
+	        background-color: #547dab;
+	    }
+
+	    /* end task styles */
+	</style>
+
+	<script src="/static/dhtmlxgantt/dhtmlxgantt.js" type="text/javascript" charset="utf-8"></script>
+	<script src='/static/dhtmlxgantt/common/dhtmlxSuite/dhtmlx.js'></script>
+	<link rel="stylesheet" href="/static/dhtmlxgantt/dhtmlxgantt.css" type="text/css" media="screen" title="no title" charset="utf-8">
+	<link rel='stylesheet' type='text/css' href='/static/dhtmlxgantt/common/dhtmlxSuite/skins/terrace/dhtmlx.css'/>
+
+	<script type="text/javascript" src="/static/dhtmlxgantt/common/testdata.js"></script>
+	<script src="/static/dhtmlxgantt/ext/dhtmlxgantt_marker.js"></script>
+	<style type="text/css">
+		html, body{ height:100%; padding:0px; margin:0px; }
+	</style>
+
+</head>
+
+<body>
+
+
+	<div id="gantt_here" style='width:100%; height:100%;'></div>
+
+	<input type="radio" id="scale1" name="scale" value="1" /><label for="scale1">Day scale</label><br>
+	<input type="radio" id="scale2" name="scale" value="2" checked/><label for="scale2">Week scale</label><br>
+	<input type="radio" id="scale3" name="scale" value="3" /><label for="scale3">Month scale</label><br>
+	<input type="radio" id="scale4" name="scale" value="4" /><label for="scale4">Year scale</label><br>
+
+	<script type="text/javascript">
+
+        // ordering tasks only inside a branch
+	    gantt.config.order_branch = true;
+	    gantt.config.order_branch_free = false;
+	    gantt.config.row_height = 30;
+
+
+        function setScaleConfig(value){
+			switch (value) {
+				case "1":
+					gantt.config.scale_unit = "day";
+					gantt.config.step = 1;
+					gantt.config.date_scale = "%d %M";
+					gantt.config.subscales = [];
+					gantt.config.scale_height = 27;
+					gantt.templates.date_scale = null;
+					break;
+				case "2":
+					var weekScaleTemplate = function(date){
+						var dateToStr = gantt.date.date_to_str("%d %M");
+						var endDate = gantt.date.add(gantt.date.add(date, 1, "week"), -1, "day");
+						return dateToStr(date) + " - " + dateToStr(endDate);
+					};
+
+					gantt.config.scale_unit = "week";
+					gantt.config.step = 1;
+					gantt.templates.date_scale = weekScaleTemplate;
+					gantt.config.subscales = [
+						{unit:"day", step:1, date:"%D" }
+					];
+					gantt.config.scale_height = 50;
+					break;
+				case "3":
+					gantt.config.scale_unit = "month";
+					gantt.config.date_scale = "%F, %Y";
+					gantt.config.subscales = [
+						{unit:"day", step:1, date:"%j, %D" }
+					];
+					gantt.config.scale_height = 50;
+					gantt.templates.date_scale = null;
+					break;
+				case "4":
+					gantt.config.scale_unit = "year";
+					gantt.config.step = 1;
+					gantt.config.date_scale = "%Y";
+					gantt.config.min_column_width = 50;
+
+					gantt.config.scale_height = 90;
+					gantt.templates.date_scale = null;
+
+
+					gantt.config.subscales = [
+						{unit:"month", step:1, date:"%M" }
+					];
+					break;
+			}
+		}
+
+
+        // gantt.config.autosize = true;
+
+        gantt.config.grid_width = 380;
+    	gantt.config.add_column = false;
+
+        gantt.config.subscales = [
+            {unit:"day", step:1, date:"%j, %D" }
+        ];
+
+        gantt.templates.rightside_text = function(start, end, task){
+            if(task.type == gantt.config.types.milestone){
+                return task.text;
+            }
+            return "";
+        };
+
+        // schedule/unschedule
+        gantt.locale.labels.time_enable_button = 'Schedule';
+		gantt.locale.labels.time_disable_button = 'Unschedule';
+
+		gantt.config.lightbox.milestone_sections = [
+			{name: "description", height: 70, map_to: "text", type: "textarea", focus: true},
+			{name: "time", map_to: "auto", button: true, single_date:true, type: "duration_optional"}
+		];
+
+		gantt.attachEvent("onLightboxSave", function(id, task, is_new){
+			task.unscheduled = !task.start_date;
+			return true;
+		});
+		// end schedule/unschedule
+
+	    // highlight drag position
+		gantt.config.show_drag_vertical = true;
+		gantt.config.show_drag_dates = true;
+		gantt.config.drag_label_width = 70;
+		gantt.config.drag_date = "%Y‐%m‐%d";
+		gantt.templates.drag_date = null;
+
+		gantt.attachEvent("onGanttReady", function () {
+			gantt.templates.drag_date = gantt.date.date_to_str(gantt.config.drag_date);
+
+			//highlight area
+			gantt.addTaskLayer({
+				renderer: function highlight_area(task) {
+					var sizes = gantt.getTaskPosition(task, task.start_date, task.end_date),
+							wrapper = document.createElement("div");
+
+					addElement({
+						css: 'drag_move_vertical',
+						left: sizes.left + 'px',
+						top: 0,
+						width: sizes.width + 'px',
+						height: gantt.getVisibleTaskCount()*gantt.config.row_height + "px",
+						wrapper: wrapper
+					});
+
+					addElement({
+						css: 'drag_move_horizontal',
+						left: 0,
+						top: sizes.top + 'px',
+						width: 100 + "%",
+						height: gantt.config.row_height - 1 + 'px',
+						wrapper: wrapper
+					});
+
+					return wrapper;
+				},
+				filter: function (task) {
+					return gantt.config.show_drag_vertical && task.id == gantt.getState().drag_id;
+				}
+			});
+
+			// show today
+			var date_to_str = gantt.date.date_to_str(gantt.config.task_date);
+
+			var id = gantt.addMarker({
+				start_date: new Date(),
+				css: "today",
+				text: "Today",
+				title:date_to_str( new Date())});
+
+			setInterval(function(){
+			    var today = gantt.getMarker(id);
+			    today.start_date = new Date();
+			    today.title = date_to_str(today.start_date);
+			    gantt.updateMarker(id);
+			}, 1000*60);
+			// end show today
+
+			//show drag dates
+			gantt.addTaskLayer({
+				renderer: function show_dates(task) {
+					var sizes = gantt.getTaskPosition(task, task.start_date, task.end_date),
+							wrapper = document.createElement('div');
+
+					addElement({
+						css: "drag_move_start drag_date",
+						left: sizes.left - gantt.config.drag_label_width + 'px',
+						top: sizes.top + 'px',
+						width: gantt.config.drag_label_width + 'px',
+						height: gantt.config.row_height - 1 + 'px',
+						html: gantt.templates.drag_date(task.start_date),
+						wrapper: wrapper
+					});
+
+					addElement({
+						css: "drag_move_end drag_date",
+						left: sizes.left + sizes.width + 'px',
+						top: sizes.top + 'px',
+						width: gantt.config.drag_label_width + 'px',
+						height: gantt.config.row_height - 1 + 'px',
+						html: gantt.templates.drag_date(task.end_date),
+						wrapper: wrapper
+					});
+
+					return wrapper;
+				},
+				filter: function (task) {
+					return gantt.config.show_drag_dates && task.id == gantt.getState().drag_id;
+				}
+			});
+
+			function addElement(config) {
+				var div = document.createElement('div');
+				div.style.position = "absolute";
+				div.className = config.css || "";
+				div.style.left = config.left;
+				div.style.width = config.width;
+				div.style.height = config.height;
+				div.style.lineHeight = config.height;
+				div.style.top = config.top;
+				if (config.html)
+					div.innerHTML = config.html;
+				if (config.wrapper)
+					config.wrapper.appendChild(div);
+				return div;
+			}
+		});
+
+		// end highlight drag position
+
+
+		//calendar in lightbox
+		var duration = function (a, b, c) {
+			var res = gantt.calculateDuration(a.getDate(false), b.getDate(false));
+			c.innerHTML = res + ' days';
+		};
+
+		var calendar_init = function (id, data, date) {
+			var obj = new dhtmlXCalendarObject(id);
+			obj.setDateFormat(data.date_format ? data.date_format : '');
+			obj.setDate(date ? date : (new Date()));
+			obj.hideTime();
+			if (data.skin)
+				obj.setSkin(data.skin);
+			return obj;
+		};
+
+		gantt.form_blocks["dhx_calendar"] = {
+			render: function (sns) {
+				return "<div class='dhx_calendar_cont'><input type='text' readonly='true' id='calendar1'/> &#8211; "
+						+ "<input type='text' readonly='true' id='calendar2'/><label id='duration'></label></div>";
+			},
+			set_value: function (node, value, task, data) {
+				var a = node._cal_start = calendar_init('calendar1', data, task.start_date);
+				var b = node._cal_end = calendar_init('calendar2', data, task.end_date);
+				var c = node.lastChild;
+
+				b.setInsensitiveRange(null, new Date(a.getDate(false) - 86400000));
+
+				var a_click = a.attachEvent("onClick", function (date) {
+					b.setInsensitiveRange(null, new Date(date.getTime() - 86400000));
+					duration(a, b, c);
+				});
+
+				var b_click = b.attachEvent("onClick", function (date) {
+					duration(a, b, c);
+				});
+
+				var a_time_click = a.attachEvent("onChange", function (d) {
+					b.setInsensitiveRange(null, new Date(d.getTime() - 86400000));
+					duration(a, b, c);
+				});
+
+				var b_time_click = b.attachEvent("onChange", function (d) {
+					duration(a, b, c);
+				});
+
+
+				var id = gantt.attachEvent("onAfterLightbox", function () {
+					a.detachEvent(a_click);
+					a.detachEvent(a_time_click);
+					a.unload();
+					b.detachEvent(b_click);
+					b.detachEvent(b_time_click);
+					b.unload();
+					a = b = null;
+					this.detachEvent(id);
+				});
+
+				document.getElementById('calendar1').value = a.getDate(true);
+				document.getElementById('calendar2').value = b.getDate(true);
+				duration(a, b, c);
+			},
+			get_value: function (node, task) {
+				task.start_date = node._cal_start.getDate(false);
+				task.end_date = node._cal_end.getDate(false);
+				return task;
+			},
+			focus: function (node) {
+			}
+		};
+		//end calendar in lightbox
+
+		// slider in lightbox
+		gantt.form_blocks["dhx_slider"] = {
+			render: function (sns) {
+				return '<div class="gantt_slider"><div><input type="text" readonly="true"/></div></div>';
+			},
+			set_value: function (node, value, task, data) {
+				if (!node._slider) {
+					node._slider = new dhtmlXSlider({
+						parent: node,
+						size: 270,
+						max: 100,
+						tooltip: true,
+						step: data.step ? data.step : 1,
+						skin: data.skin ? data.skin : ''
+					});
+
+					node._count = document.createElement('div');
+					node._count.className = "gantt_slider_value";
+
+					node.appendChild(node._count);
+					var slider_id = node._slider.attachEvent("onChange", function (newValue, sliderObj) {
+						node._count.innerHTML = newValue + "%";
+					});
+					var id = gantt.attachEvent("onAfterLightbox", function () {
+						node._slider.detachEvent(slider_id);
+						node._slider.unload();
+						node._slider = null;
+						this.detachEvent(id);
+					});
+				}
+				if (task.progress || task.progress == 0) {
+					node._slider.setValue(parseInt(task.progress * 100));
+					node._count.innerHTML = parseInt(task.progress * 100) + "%";
+				}
+			},
+			get_value: function (node, task) {
+				return node._slider ? node._slider.getValue() / 100 : 0;
+			},
+			focus: function (node) {
+			}
+		};
+		// end slider in lightbox
+
+
+		gantt.locale.labels.section_progress = "Progress";
+
+		gantt.config.lightbox.sections = [
+			{name: "description", height: 50, map_to: "text", type: "textarea", focus: true},
+			{name: "progress", type: "dhx_slider", map_to: "progress", step: 5},
+			{name: "time", type: "dhx_calendar", map_to: "auto", skin: '', date_format: '%d %M %Y'}
+			// {name: "time", type: "duration", map_to: "auto"}
+		];
+
+
+		gantt.config.xml_date = "%Y-%m-%d %H:%i:%s";
+
+		// gantt.templates.progress_text = function(start, end, task){
+		// 	return "<span style='text-align:left;'>"+Math.round(task.progress*100)+ "% </span>";
+		// };
+
+
+
+		gantt.init("gantt_here", new Date(2016, 03, 01), new Date(2016, 8, 01));
+
+		function createBox(sizes, class_name){
+			var box = document.createElement('div');
+			box.style.cssText = [
+				"height:" + sizes.height + "px",
+				"line-height:" + sizes.height + "px",
+				"width:" + sizes.width + "px",
+				"top:" + sizes.top + 'px',
+				"left:" + sizes.left + "px",
+				"position:absolute"
+			].join(";");
+			box.className = class_name;
+			return box;
+		}
+
+		gantt.templates.grid_row_class = gantt.templates.task_class=function(start, end, task){
+			var css = [];
+			if(gantt.hasChild(task.id)){
+				css.push("task-parent");
+			}
+			if (!task.$open && gantt.hasChild(task.id)) {
+				css.push("task-collapsed");
+			}
+
+			return css.join(" ");
+		};
+
+		gantt.addTaskLayer(function show_hidden(task) {
+			if (!task.$open && gantt.hasChild(task.id)) {
+				var sub_height = gantt.config.row_height - 5,
+					el = document.createElement('div'),
+					sizes = gantt.getTaskPosition(task);
+
+				var sub_tasks = gantt.getChildren(task.id);
+
+				var child_el;
+
+				for (var i = 0; i < sub_tasks.length; i++){
+					var child = gantt.getTask(sub_tasks[i]);
+					var child_sizes = gantt.getTaskPosition(child);
+
+					child_el = createBox({
+						height: sub_height,
+						top:sizes.top,
+						left:child_sizes.left,
+						width: child_sizes.width
+					}, "child_preview gantt_task_line");
+					child_el.innerHTML =  child.text;
+					el.appendChild(child_el);
+				}
+				return el;
+			}
+			return false;
+		});
+
+		//task styles
+		gantt.config.columns=[
+	        {name:"text",       label:"Task name",  tree:true, width:200 },
+	        {name:"open",       label:"State", width:80,  align: "center",
+		        template: function(item) {
+		                switch (item.open){
+							case 1:
+								return "Open";
+								break;
+							case 0:
+								return "Closed";
+								break;
+						}
+		            }
+	        },
+	        {name:"progress", label:"Progress", width:80, align: "center",
+	            template: function(item) {
+	                if (item.progress >= 1)
+	                    return "Complete";
+	                if (item.progress == 0)
+	                    return "Not started";
+	                return Math.round(item.progress*100) + "%";
+	            }
+	        },
+	        {name:"assigned", label:"Assigned to", align: "center", width:100,
+	            template: function(item) {
+	            	if (item.is_milestone == 1)
+	            		return "";
+	                if (!item.users) return "Nobody";
+	                return item.users.join(", ");
+	            }
+	        }
+	    ];
+
+	    gantt.templates.task_class = function(start, end, task){
+			switch (task.is_milestone){
+				case 1:
+					return "milestone";
+					break;
+				case 0:
+					return "issue";
+					break;
+			}
+		};
+
+
+	    gantt.templates.grid_row_class = function(item) {
+	        if (item.progress  == 0) return "red";
+	        if (item.progress >= 1) return "green";
+	    };
+	    gantt.templates.task_row_class = function(start_date, end_date, item) {
+	        if (item.progress  == 0) return "red";
+	        if (item.progress >= 1) return "green";
+	    };
+
+		//end task styles
+
+
+		// gantt.parse(tasks);
+
+		gantt.load("/gantt-chart-REST")
+
+		setScaleConfig('2');
+
+		var dp = new gantt.dataProcessor("/gantt-chart-REST");
+        dp.init(gantt);
+        dp.setTransactionMode("REST");
+
+        var func = function(e) {
+			e = e || window.event;
+			var el = e.target || e.srcElement;
+			var value = el.value;
+			setScaleConfig(value);
+			gantt.render();
+		};
+
+		var els = document.getElementsByName("scale");
+		for (var i = 0; i < els.length; i++) {
+			els[i].onclick = func;
+		}
+
+
+	</script>
+</body>
